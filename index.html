@@ -37,6 +37,7 @@
   --white:#FFFFFF;
   --pale:#EEF3FF;       /* Pale Blue      */
   --field:#1835F5;      /* Background Blue — nền khu vực chứa nút */
+  --num:#A4AAFB;        /* số thứ tự: xanh nhạt, đổi đúng dòng này nếu muốn đậm/nhạt hơn */
   --ease:cubic-bezier(.2,0,.2,1);
   /* góc cắt kỹ thuật, dùng chung cho nút và ô mũi tên */
   --cut:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
@@ -116,7 +117,9 @@ main{
 .num{
   display:grid; place-items:center; align-self:stretch;
   font-weight:700; font-size:64px; line-height:1;
-  color:var(--navy); opacity:.14;
+  /* Màu đặc thay cho navy + opacity: navy mờ ra xám xỉn, khó nhìn.
+     Màu đặc cũng kiểm soát được chính xác, không phụ thuộc nền phía sau. */
+  color:var(--num);
   user-select:none; -webkit-user-select:none;
 }
 .num::before{content:counter(t,decimal-leading-zero)}
