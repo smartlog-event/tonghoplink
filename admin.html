@@ -373,6 +373,14 @@ function esc(s){
                   .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* Biến lỗi thành chữ đọc được. String(object) chỉ ra "[object Object]" — vô dụng. */
+function errText(e){
+  if(!e) return 'không rõ';
+  if(e.message) return e.message;
+  if(e.name) return e.name;
+  try{ return JSON.stringify(e); }catch(x){ return String(e); }
+}
+
 /* Lấy câu báo lỗi thật GitHub trả về, để thông báo nói rõ nguyên nhân */
 async function gmsg(res){
   try{
@@ -618,11 +626,14 @@ async function doSave(retried){
       return;
     }
 
-    var msg = code === 'AUTH'     ? 'Mã khoá không có quyền ghi vào repo này.'
-            : code === 'CONFLICT' ? 'Máy khác vừa sửa danh sách này. Hãy tải lại trang rồi sửa lại.'
-            : code === 'MARKER'   ? 'File index.html thiếu dấu hiệu chèn nút (BTN:START / BTN:END).'
-            : code === 'NET'      ? 'Lưu không thành công.'
-            : 'Lỗi không lường trước: ' + (err && (err.message || err.name) || String(err));
+    var msg = code === 'AUTH'      ? 'Mã khoá không có quyền ghi vào repo này.'
+            : code === 'CONFLICT'  ? 'Máy khác vừa sửa danh sách này. Hãy tải lại trang rồi sửa lại.'
+            : code === 'MARKER'    ? 'File index.html thiếu dấu hiệu chèn nút (BTN:START / BTN:END).'
+            : code === 'NET'       ? 'Lưu không thành công.'
+            : code === 'NEEDTOKEN' ? (lsBlocked
+                ? 'Chưa có mã khoá, và trình duyệt này chặn ghi nhớ. Hãy mở bằng Safari hoặc Chrome.'
+                : 'Chưa có mã khoá GitHub.')
+            : 'Lỗi không lường trước: ' + errText(err);
 
     // Luôn kèm chi tiết để biết hỏng ở chặng nào, không để thông báo chung vô nghĩa
     var det = err && err.detail ? ' ' + err.detail : '';
@@ -671,7 +682,9 @@ async function boot(){
   }
 
   $('add').addEventListener('click', function(){ openDialog(-1) });
-  $('save').addEventListener('click', doSave);
+  // Bọc trong hàm: nếu truyền doSave trực tiếp thì trình duyệt nhồi đối tượng
+  // sự kiện click vào tham số retried, làm nhánh hỏi mã khoá không bao giờ chạy.
+  $('save').addEventListener('click', function(){ doSave(false) });
 
   $('grid').addEventListener('click', function(e){
     var t = e.target.closest('.ed, .rm');
