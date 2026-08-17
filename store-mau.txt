@@ -1,0 +1,139 @@
+CÁC KHỐI STORE THAY THẾ
+=======================
+
+Trong file admin.html có hai dòng đánh dấu:
+
+    /* ===== STORE:START ... ===== */
+    ... (khối đang chạy) ...
+    /* ========================= STORE:END ... ===== */
+
+Đổi nơi lưu trữ = xoá phần GIỮA hai dòng đó, dán khối tương ứng bên dưới vào.
+Không phải sửa bất cứ dòng nào khác trong cả ba file.
+
+
+═══════════════════════════════════════════════════════════════════════════
+KHỐI 1 — HOSTING CÔNG TY CÓ PHP  (nhanh nhất, khuyến nghị nếu hosting có PHP)
+═══════════════════════════════════════════════════════════════════════════
+Cần làm trước: upload api.php nằm cạnh index.html, đổi $PASS trong api.php.
+Ưu điểm: lưu là thấy ngay, không chờ build. Mật khẩu được kiểm ở phía server.
+
+var Store = {
+  name: 'hosting công ty',
+  API: 'api.php',
+  pass: '',
+
+  async login(pass){
+    var r = await fetch(this.API, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'login', pass:pass})
+    });
+    var j = await r.json().catch(function(){ return {} });
+    if(j && j.ok){ this.pass = pass; return true; }
+    return false;
+  },
+
+  async load(){ return await readFromIndex(); },
+
+  async save(items, html){
+    if(!html) throw {code:'MARKER'};
+    var cur = await fetch(this.API + '?action=read', {cache:'no-store'});
+    if(!cur.ok) throw {code:'NET'};
+    var c = await cur.json();
+    var r = await fetch(this.API, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'write', pass:this.pass, version:c.version, html:html})
+    });
+    if(r.status === 401) throw {code:'AUTH'};
+    if(r.status === 409) throw {code:'CONFLICT'};
+    if(!r.ok) throw {code:'NET'};
+    localStorage.removeItem('sl_hub_v1');   // bỏ bản lưu tạm của bản chạy thử
+    return {note:'Đã lưu. Sale mở lại trang là thấy ngay.'};
+  }
+};
+
+
+═══════════════════════════════════════════════════════════════════════════
+KHỐI 2 — GITHUB PAGES  (miễn phí, nhưng chờ 20-60 giây mỗi lần lưu)
+═══════════════════════════════════════════════════════════════════════════
+Cần làm trước:
+  1. Tạo repo, bật GitHub Pages, upload index.html + admin.html + sw.js.
+  2. Vào github.com > Settings > Developer settings > Personal access tokens
+     > Fine-grained tokens > Generate new token:
+       - Repository access: chỉ chọn ĐÚNG repo này
+       - Permissions > Repository permissions > Contents: Read and write
+       - Expiration: 1 năm (nhớ đặt lịch tạo lại)
+  3. Sửa OWNER và REPO ở dòng đầu khối bên dưới.
+
+QUAN TRỌNG: ô "Mật khẩu" lúc đó chính là token GitHub. Token KHÔNG được viết
+vào file — chỉ gõ vào ô mật khẩu, mỗi máy gõ một lần. Repo để public thì ai
+đọc được file cũng không thấy token.
+
+var Store = {
+  name: 'GitHub',
+  OWNER: 'ten-tai-khoan',        // <-- SỬA
+  REPO:  'ten-repo',             // <-- SỬA
+  PATH:  'index.html',
+  BRANCH:'main',
+  token: '',
+
+  get url(){
+    return 'https://api.github.com/repos/' + this.OWNER + '/' + this.REPO +
+           '/contents/' + this.PATH;
+  },
+
+  async login(tok){
+    var r = await fetch(this.url + '?ref=' + this.BRANCH, {
+      headers:{Authorization:'Bearer ' + tok, Accept:'application/vnd.github+json'}
+    });
+    if(r.ok){ this.token = tok; localStorage.setItem('sl_tok', tok); return true; }
+    return false;
+  },
+
+  async load(){ return await readFromIndex(); },
+
+  async save(items, html){
+    if(!html) throw {code:'MARKER'};
+    if(!this.token) this.token = localStorage.getItem('sl_tok') || '';
+
+    // lấy sha hiện tại
+    var g = await fetch(this.url + '?ref=' + this.BRANCH, {
+      cache:'no-store',
+      headers:{Authorization:'Bearer ' + this.token, Accept:'application/vnd.github+json'}
+    });
+    if(g.status === 401) throw {code:'AUTH'};
+    if(!g.ok) throw {code:'NET'};
+    var meta = await g.json();
+
+    // Mã hoá UTF-8 đúng cách. btoa() trần sẽ làm hỏng tiếng Việt có dấu.
+    var bytes = new TextEncoder().encode(html);
+    var bin = '';
+    for(var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+
+    var p = await fetch(this.url, {
+      method:'PUT',
+      headers:{Authorization:'Bearer ' + this.token, Accept:'application/vnd.github+json'},
+      body: JSON.stringify({
+        message:'cap nhat danh sach nut',
+        content: btoa(bin),
+        sha: meta.sha,
+        branch: this.BRANCH
+      })
+    });
+    if(p.status === 401) throw {code:'AUTH'};
+    if(p.status === 409 || p.status === 422) throw {code:'CONFLICT'};
+    if(!p.ok) throw {code:'NET'};
+    localStorage.removeItem('sl_hub_v1');   // bỏ bản lưu tạm của bản chạy thử
+    return {note:'Đã lưu. Chờ khoảng 1 phút rồi tải lại trang chính mới thấy bản mới.'};
+  }
+};
+
+
+═══════════════════════════════════════════════════════════════════════════
+GHI CHÚ VỀ GIẢI MÃ TIẾNG VIỆT
+═══════════════════════════════════════════════════════════════════════════
+Nếu về sau cần đọc file từ GitHub API (thay vì fetch index.html trực tiếp),
+phải giải mã base64 đúng cách, nếu không mọi chữ có dấu sẽ thành ký tự lạ:
+
+  var raw = atob(res.content.replace(/\n/g, ''));
+  var arr = Uint8Array.from(raw, function(c){ return c.charCodeAt(0) });
+  var html = new TextDecoder('utf-8').decode(arr);
