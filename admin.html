@@ -298,8 +298,8 @@ var Store = {
       cache:'no-store',
       headers:{Authorization:'Bearer ' + this.token, Accept:'application/vnd.github+json'}
     });
-    if(g.status === 401 || g.status === 403) throw {code:'AUTH'};
-    if(!g.ok) throw {code:'NET'};
+    if(g.status === 401 || g.status === 403) throw {code:'AUTH', detail:'đọc repo bị chặn, HTTP ' + g.status};
+    if(!g.ok) throw {code:'NET', detail:'đọc repo lỗi HTTP ' + g.status + ' ' + (await gmsg(g))};
     var meta = await g.json();
 
     // Mã hoá UTF-8 đúng cách — btoa() trần sẽ làm hỏng chữ có dấu
@@ -316,9 +316,9 @@ var Store = {
         branch: this.BRANCH
       })
     });
-    if(p.status === 401 || p.status === 403) throw {code:'AUTH'};
-    if(p.status === 409 || p.status === 422) throw {code:'CONFLICT'};
-    if(!p.ok) throw {code:'NET'};
+    if(p.status === 401 || p.status === 403) throw {code:'AUTH', detail:'ghi bị chặn, HTTP ' + p.status + ' ' + (await gmsg(p))};
+    if(p.status === 409 || p.status === 422) throw {code:'CONFLICT', detail:'HTTP ' + p.status};
+    if(!p.ok) throw {code:'NET', detail:'ghi lỗi HTTP ' + p.status + ' ' + (await gmsg(p))};
 
     localStorage.removeItem('sl_hub_v1');   // bỏ bản lưu tạm của lần chạy thử
     return {note:'Đã lưu lên GitHub. Chờ khoảng 1 phút rồi tải lại trang chính.'};
@@ -335,6 +335,14 @@ var NUM='<span class="num" aria-hidden="true"></span>';
 function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
                   .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* Lấy câu báo lỗi thật GitHub trả về, để thông báo nói rõ nguyên nhân */
+async function gmsg(res){
+  try{
+    var j = await res.clone().json();
+    return j && j.message ? '— ' + j.message : '';
+  }catch(e){ return ''; }
 }
 
 /* Đọc các nút trực tiếp từ index.html đang nằm cạnh file này */
@@ -359,7 +367,13 @@ async function readFromIndex(){
 
 /* Sinh lại toàn bộ index.html với danh sách nút mới */
 async function buildIndexHtml(items){
-  var r = await fetch('index.html', {cache:'no-store'});
+  var r;
+  try{
+    r = await fetch('index.html', {cache:'no-store'});
+  }catch(e){
+    throw {code:'NET', detail:'không tải được index.html (' + (e && e.message) + ')'};
+  }
+  if(!r.ok) throw {code:'NET', detail:'index.html trả về HTTP ' + r.status};
   var html = await r.text();
   var a = html.indexOf('<!--BTN:START-->');
   var b = html.indexOf('<!--BTN:END-->');
@@ -549,8 +563,9 @@ async function doSave(retried){
   $('save').disabled = true;
   setStatus('Đang lưu…');
   try{
-    var html = null;
-    try{ html = await buildIndexHtml(items); }catch(e){ html = null; }
+    // KHÔNG nuốt lỗi ở đây nữa: lỗi tải index.html phải nói đúng là lỗi tải,
+    // không được biến thành một thông báo chung vô nghĩa.
+    var html = await buildIndexHtml(items);
     var r = await Store.save(items, html);
     dirty = false;
     setStatus(r && r.note ? r.note : 'Đã lưu xong.', 'ok');
@@ -569,9 +584,14 @@ async function doSave(retried){
 
     var msg = code === 'AUTH'     ? 'Mã khoá không có quyền ghi vào repo này.'
             : code === 'CONFLICT' ? 'Máy khác vừa sửa danh sách này. Hãy tải lại trang rồi sửa lại.'
-            : code === 'MARKER'   ? 'Không đọc được index.html để chèn nút. Hãy mở trang này qua địa chỉ https:// chứ không phải file://'
-            : 'Lưu không thành công. Kiểm tra mạng rồi bấm Lưu lại.';
-    setStatus(msg, 'bad');
+            : code === 'MARKER'   ? 'File index.html thiếu dấu hiệu chèn nút (BTN:START / BTN:END).'
+            : code === 'NET'      ? 'Lưu không thành công.'
+            : 'Lỗi không lường trước: ' + (err && (err.message || err.name) || String(err));
+
+    // Luôn kèm chi tiết để biết hỏng ở chặng nào, không để thông báo chung vô nghĩa
+    var det = err && err.detail ? ' ' + err.detail : '';
+    setStatus(msg + det, 'bad');
+    if(window.console) console.error('[luu that bai]', err);
     $('save').disabled = false;
   }
 }
@@ -603,7 +623,9 @@ async function boot(){
   try{ items = await Store.load(); }catch(e){ items = []; }
   render();
   initSort();
-  setStatus('Đang lưu vào: ' + Store.name);
+  setStatus(Store.token
+    ? 'Kho lưu: ' + Store.name + ' · đã có mã khoá'
+    : 'Kho lưu: ' + Store.name + ' · chưa có mã khoá, sẽ hỏi khi bấm Lưu');
 
   $('add').addEventListener('click', function(){ openDialog(-1) });
   $('save').addEventListener('click', doSave);
