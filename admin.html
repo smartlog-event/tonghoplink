@@ -46,17 +46,6 @@ body{
 }
 button,input{font-family:inherit;font-size:inherit;font-weight:600}
 
-/* ---------- cổng mật khẩu ---------- */
-#gate{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:var(--bg);padding:24px}
-#gate form{width:100%;max-width:340px;text-align:center}
-#gate .lg{height:38px;margin-bottom:22px}
-#gate input{width:100%;padding:14px;font-size:16px;text-align:center;border:1px solid var(--border);
-  border-radius:10px;background:var(--surface);color:var(--text)}
-#gate button{width:100%;margin-top:12px;padding:14px;border:0;border-radius:10px;
-  background:var(--brand);color:var(--ink);font-weight:600}
-#gate .err{color:var(--danger);font-size:14px;min-height:20px;margin:10px 0 0}
-#gate .note{color:var(--muted);font-size:13px;margin-top:18px;line-height:1.45}
-
 /* ---------- khung chính ---------- */
 header{
   position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -177,6 +166,15 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   clip-path:polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
 }
 .derr{color:var(--danger);font-size:14px;min-height:20px;margin-top:10px}
+.tnote{font-size:14px;color:var(--muted);line-height:1.5;margin:0 0 12px}
+.tsteps{font-size:14px;color:var(--text);line-height:1.55;margin:0 0 14px;padding-left:22px}
+.tsteps li{margin-bottom:5px}
+.tlink{
+  display:inline-block;margin:0 0 4px;padding:11px 16px;
+  background:var(--brand);color:#fff;text-decoration:none;font-weight:600;font-size:15px;
+  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+.tlink:active{background:var(--navy)}
 .df{display:flex;gap:10px;padding:4px 18px 18px}
 .df button{flex:1;padding:13px;border-radius:10px;border:1px solid var(--border);
   background:transparent;color:var(--text);font-weight:600}
@@ -185,20 +183,8 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 </head>
 <body>
 
-<!-- ============ cổng mật khẩu ============ -->
-<div id="gate">
-  <form id="gform">
-    <img class="lg" src="data:image/png;base64,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" alt="Smartlog" width="130" height="38">
-    <input id="pw" type="password" inputmode="text" autocomplete="current-password" placeholder="Mật khẩu" aria-label="Mật khẩu">
-    <button type="submit">Vào cài đặt</button>
-    <p class="err" id="gerr"></p>
-    <p class="note">Mật khẩu này chỉ để tránh sửa nhầm, không phải lớp bảo mật thật.
-      Người biết cách xem mã nguồn trang vẫn đọc được nó.</p>
-  </form>
-</div>
-
 <!-- ============ khung chính ============ -->
-<div id="app" hidden>
+<div id="app">
   <header>
     <span class="ttl">Cài đặt các nút</span>
     <a href="index.html">Xem trang chính</a>
@@ -246,6 +232,29 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   </form>
 </dialog>
 
+<!-- ============ hộp mã khoá GitHub: chỉ hỏi một lần trên mỗi máy ============ -->
+<dialog id="tdlg">
+  <p class="dh">Cần mã khoá GitHub, chỉ một lần trên máy này</p>
+  <div class="db">
+    <p class="tnote">Các nút được lưu vào GitHub để mọi máy và mọi điện thoại đều thấy giống nhau.
+      GitHub bắt buộc phải có mã khoá mới cho ghi. Dán một lần, trình duyệt nhớ luôn, lần sau không hỏi lại.</p>
+    <ol class="tsteps">
+      <li>Bấm <strong>Mở trang tạo mã khoá</strong> bên dưới (mở tab mới, đã chọn sẵn quyền cần thiết).</li>
+      <li>Kéo xuống cuối, bấm <strong>Generate token</strong>.</li>
+      <li>Copy chuỗi ký tự vừa hiện ra — GitHub chỉ hiện đúng một lần.</li>
+      <li>Quay lại đây, dán vào ô dưới.</li>
+    </ol>
+    <p><a class="tlink" href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Tong%20hop%20link%20-%20sua%20nut" target="_blank" rel="noopener">Mở trang tạo mã khoá →</a></p>
+    <label for="tok">Dán mã khoá vào đây</label>
+    <input id="tok" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_...">
+    <p class="derr" id="terr"></p>
+  </div>
+  <div class="df">
+    <button type="button" id="tcancel">Để sau</button>
+    <button type="button" id="tsave" class="pri">Kiểm tra và lưu</button>
+  </div>
+</dialog>
+
 <script>
 /* ==========================================================================
    STORE:START — ĐỔI NƠI LƯU TRỮ CHỈ CẦN THAY KHỐI NÀY
@@ -256,25 +265,63 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
    Phần còn lại của cả ba file không phải sửa dòng nào.
    ========================================================================== */
 var Store = {
-  name: 'may-nay',
-  PASS: 'smartlog',                 // ĐỔI mật khẩu ở đây
+  name: 'GitHub · smartlog-event/tonghoplink',
+  OWNER: 'smartlog-event',
+  REPO:  'tonghoplink',
+  PATH:  'index.html',
+  BRANCH:'main',
 
-  async login(pass){
-    return pass === this.PASS;
+  get url(){
+    return 'https://api.github.com/repos/' + this.OWNER + '/' + this.REPO + '/contents/' + this.PATH;
+  },
+  get token(){ return localStorage.getItem('sl_tok') || ''; },
+  set token(v){ localStorage.setItem('sl_tok', v); },
+
+  // Kiểm tra một mã khoá có ghi được vào repo này không
+  async check(tok){
+    var r = await fetch(this.url + '?ref=' + this.BRANCH, {
+      cache:'no-store',
+      headers:{Authorization:'Bearer ' + tok, Accept:'application/vnd.github+json'}
+    });
+    return r.ok;
   },
 
-  // Đọc danh sách nút đang có
-  async load(){
-    var saved = null;
-    try{ saved = JSON.parse(localStorage.getItem('sl_hub_v1')); }catch(e){}
-    if(Array.isArray(saved)) return saved;
-    return await readFromIndex();     // lần đầu: lấy từ chính index.html
-  },
+  // Đọc danh sách nút từ chính index.html đang chạy
+  async load(){ return await readFromIndex(); },
 
-  // Ghi danh sách nút. html là bản index.html đã sinh sẵn, dùng cho hosting thật.
   async save(items, html){
-    localStorage.setItem('sl_hub_v1', JSON.stringify(items));
-    return {saved:'local'};
+    if(!html) throw {code:'MARKER'};
+    if(!this.token) throw {code:'NEEDTOKEN'};
+
+    // lấy sha hiện tại để không ghi đè lên bản người khác vừa sửa
+    var g = await fetch(this.url + '?ref=' + this.BRANCH, {
+      cache:'no-store',
+      headers:{Authorization:'Bearer ' + this.token, Accept:'application/vnd.github+json'}
+    });
+    if(g.status === 401 || g.status === 403) throw {code:'AUTH'};
+    if(!g.ok) throw {code:'NET'};
+    var meta = await g.json();
+
+    // Mã hoá UTF-8 đúng cách — btoa() trần sẽ làm hỏng chữ có dấu
+    var bytes = new TextEncoder().encode(html), bin = '';
+    for(var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+
+    var p = await fetch(this.url, {
+      method:'PUT',
+      headers:{Authorization:'Bearer ' + this.token, Accept:'application/vnd.github+json'},
+      body: JSON.stringify({
+        message:'cap nhat danh sach nut',
+        content: btoa(bin),
+        sha: meta.sha,
+        branch: this.BRANCH
+      })
+    });
+    if(p.status === 401 || p.status === 403) throw {code:'AUTH'};
+    if(p.status === 409 || p.status === 422) throw {code:'CONFLICT'};
+    if(!p.ok) throw {code:'NET'};
+
+    localStorage.removeItem('sl_hub_v1');   // bỏ bản lưu tạm của lần chạy thử
+    return {note:'Đã lưu lên GitHub. Chờ khoảng 1 phút rồi tải lại trang chính.'};
   }
 };
 /* ========================= STORE:END ===================================== */
@@ -471,7 +518,34 @@ function initSort(){
 }
 
 /* ---------- lưu ---------- */
-async function doSave(){
+/* Hỏi mã khoá GitHub. Chỉ gọi khi thật sự cần ghi mà chưa có mã. */
+function askToken(){
+  return new Promise(function(resolve){
+    $('terr').textContent = '';
+    $('tok').value = '';
+    $('tdlg').showModal();
+    var ok = $('tsave'), no = $('tcancel');
+    function done(v){ ok.onclick = null; no.onclick = null; $('tdlg').close(); resolve(v); }
+    ok.onclick = async function(){
+      var v = $('tok').value.trim();
+      if(!v){ $('terr').textContent = 'Chưa dán mã khoá.'; return; }
+      ok.disabled = true;
+      $('terr').textContent = 'Đang kiểm tra…';
+      var good = false;
+      try{ good = await Store.check(v); }catch(e){ good = false; }
+      ok.disabled = false;
+      if(!good){
+        $('terr').textContent = 'Mã khoá này không ghi được vào repo. Kiểm tra đã tích quyền repo chưa, hoặc tạo mã mới.';
+        return;
+      }
+      Store.token = v;
+      done(true);
+    };
+    no.onclick = function(){ done(false); };
+  });
+}
+
+async function doSave(retried){
   $('save').disabled = true;
   setStatus('Đang lưu…');
   try{
@@ -482,9 +556,20 @@ async function doSave(){
     setStatus(r && r.note ? r.note : 'Đã lưu xong.', 'ok');
   }catch(err){
     var code = err && err.code;
-    var msg = code === 'AUTH'     ? 'Mật khẩu hoặc quyền ghi không đúng. Hãy đăng nhập lại.'
+
+    // Chưa có mã khoá, hoặc mã cũ đã hết hạn: hỏi rồi tự lưu lại
+    if((code === 'NEEDTOKEN' || code === 'AUTH') && !retried){
+      if(code === 'AUTH') localStorage.removeItem('sl_tok');
+      var got = await askToken();
+      if(got) return doSave(true);
+      setStatus('Chưa lưu. Cần mã khoá GitHub mới ghi được.', 'warn');
+      $('save').disabled = false;
+      return;
+    }
+
+    var msg = code === 'AUTH'     ? 'Mã khoá không có quyền ghi vào repo này.'
             : code === 'CONFLICT' ? 'Máy khác vừa sửa danh sách này. Hãy tải lại trang rồi sửa lại.'
-            : code === 'MARKER'   ? 'Không tìm thấy dấu hiệu chèn nút trong index.html.'
+            : code === 'MARKER'   ? 'Không đọc được index.html để chèn nút. Hãy mở trang này qua địa chỉ https:// chứ không phải file://'
             : 'Lưu không thành công. Kiểm tra mạng rồi bấm Lưu lại.';
     setStatus(msg, 'bad');
     $('save').disabled = false;
@@ -506,15 +591,13 @@ async function downloadIndex(){
 }
 
 /* ---------- khởi động ---------- */
-$('gform').addEventListener('submit', async function(e){
-  e.preventDefault();
-  var ok = false;
-  try{ ok = await Store.login($('pw').value); }catch(err){ ok = false; }
-  if(!ok){ $('gerr').textContent = 'Mật khẩu không đúng.'; $('pw').select(); return; }
-  $('gate').remove();
-  $('app').hidden = false;
+/* Không còn mật khẩu: mở trang là vào cài đặt luôn.
+   Chờ tới khi cả trang parse xong vì thư viện sắp xếp nằm ở cuối file. */
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+}else{
   boot();
-});
+}
 
 async function boot(){
   try{ items = await Store.load(); }catch(e){ items = []; }
