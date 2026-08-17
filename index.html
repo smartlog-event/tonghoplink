@@ -208,21 +208,10 @@ main{
 
 <script>
 (function(){
-  var ACT='<span class="act" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M5 12h13M12.5 6l6 6-6 6"/></svg></span>';
-  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-
-  // Các nút đã nằm sẵn trong HTML ở trên và đã hiện xong trước khi đoạn này chạy.
-  // Đoạn dưới chỉ cập nhật nếu máy này có bản sửa mới hơn chưa kịp lên server.
-  try{
-    var d=JSON.parse(localStorage.getItem('sl_hub_v1'));
-    if(Array.isArray(d)){
-      document.getElementById('grid').innerHTML=d.map(function(b){
-        return '<a class="tile" href="'+esc(b.url)+'" target="_blank" rel="noopener">'+
-               '<span class="num" aria-hidden="true"></span>'+
-               '<span class="lb">'+esc(b.label)+'</span>'+ACT+'</a>';
-      }).join('');
-    }
-  }catch(e){}
+  // Các nút nằm sẵn dạng thẻ <a> ngay trong HTML ở trên, đã hiện xong trước khi
+  // đoạn này chạy. KHÔNG có nguồn dữ liệu thứ hai nào ghi đè lên chúng — kho lưu
+  // duy nhất là chính file này trên GitHub. Nhờ vậy trang không bao giờ phụ thuộc
+  // vào bộ nhớ trình duyệt, thứ bị chặn trong trình duyệt nhúng và chế độ riêng tư.
 
   // Báo cho sale biết đang xem bản lưu, kèm mốc thời gian lưu
   var sa=document.documentElement.getAttribute('data-saved-at');

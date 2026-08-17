@@ -256,6 +256,27 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 </dialog>
 
 <script>
+/* --------------------------------------------------------------------------
+   Bộ nhớ cục bộ an toàn.
+   Trình duyệt nhúng (mở link từ Zalo, Messenger...) và chế độ riêng tư có thể
+   CHẶN localStorage, và khi bị chặn thì chỉ đọc thôi cũng đã văng lỗi.
+   Mọi truy cập phải đi qua ba hàm này, không được gọi localStorage trực tiếp.
+   -------------------------------------------------------------------------- */
+var memTok = '';          // giữ mã khoá trong bộ nhớ khi localStorage bị chặn
+var lsBlocked = false;
+
+function lsGet(k){
+  try{ return localStorage.getItem(k); }
+  catch(e){ lsBlocked = true; return null; }
+}
+function lsSet(k,v){
+  try{ localStorage.setItem(k,v); return true; }
+  catch(e){ lsBlocked = true; return false; }
+}
+function lsDel(k){
+  try{ localStorage.removeItem(k); }catch(e){ lsBlocked = true; }
+}
+
 /* ==========================================================================
    STORE:START — ĐỔI NƠI LƯU TRỮ CHỈ CẦN THAY KHỐI NÀY
 
@@ -274,16 +295,20 @@ var Store = {
   get url(){
     return 'https://api.github.com/repos/' + this.OWNER + '/' + this.REPO + '/contents/' + this.PATH;
   },
-  get token(){ return localStorage.getItem('sl_tok') || ''; },
-  set token(v){ localStorage.setItem('sl_tok', v); },
+  // Đọc/ghi qua lsGet/lsSet: trình duyệt nhúng trong Zalo và chế độ riêng tư
+  // có thể CHẶN localStorage và văng lỗi ngay tại dòng truy cập.
+  get token(){ return memTok || lsGet('sl_tok') || ''; },
+  set token(v){ memTok = v; lsSet('sl_tok', v); },
 
   // Kiểm tra một mã khoá có ghi được vào repo này không
   async check(tok){
-    var r = await fetch(this.url + '?ref=' + this.BRANCH, {
-      cache:'no-store',
-      headers:{Authorization:'Bearer ' + tok, Accept:'application/vnd.github+json'}
-    });
-    return r.ok;
+    try{
+      var r = await fetch(this.url + '?ref=' + this.BRANCH, {
+        cache:'no-store',
+        headers:{Authorization:'Bearer ' + tok, Accept:'application/vnd.github+json'}
+      });
+      return r.ok;
+    }catch(e){ return false; }   // trình duyệt nhúng có thể chặn gọi api.github.com
   },
 
   // Đọc danh sách nút từ chính index.html đang chạy
@@ -294,10 +319,15 @@ var Store = {
     if(!this.token) throw {code:'NEEDTOKEN'};
 
     // lấy sha hiện tại để không ghi đè lên bản người khác vừa sửa
-    var g = await fetch(this.url + '?ref=' + this.BRANCH, {
-      cache:'no-store',
-      headers:{Authorization:'Bearer ' + this.token, Accept:'application/vnd.github+json'}
-    });
+    var g;
+    try{
+      g = await fetch(this.url + '?ref=' + this.BRANCH, {
+        cache:'no-store',
+        headers:{Authorization:'Bearer ' + this.token, Accept:'application/vnd.github+json'}
+      });
+    }catch(e){
+      throw {code:'NET', detail:'không gọi được api.github.com (' + (e && e.message) + ')'};
+    }
     if(g.status === 401 || g.status === 403) throw {code:'AUTH', detail:'đọc repo bị chặn, HTTP ' + g.status};
     if(!g.ok) throw {code:'NET', detail:'đọc repo lỗi HTTP ' + g.status + ' ' + (await gmsg(g))};
     var meta = await g.json();
@@ -306,7 +336,9 @@ var Store = {
     var bytes = new TextEncoder().encode(html), bin = '';
     for(var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
 
-    var p = await fetch(this.url, {
+    var p;
+    try{
+    p = await fetch(this.url, {
       method:'PUT',
       headers:{Authorization:'Bearer ' + this.token, Accept:'application/vnd.github+json'},
       body: JSON.stringify({
@@ -316,11 +348,15 @@ var Store = {
         branch: this.BRANCH
       })
     });
+    }catch(e){
+      if(e && e.code) throw e;
+      throw {code:'NET', detail:'không gửi được lệnh ghi (' + (e && e.message) + ')'};
+    }
     if(p.status === 401 || p.status === 403) throw {code:'AUTH', detail:'ghi bị chặn, HTTP ' + p.status + ' ' + (await gmsg(p))};
     if(p.status === 409 || p.status === 422) throw {code:'CONFLICT', detail:'HTTP ' + p.status};
     if(!p.ok) throw {code:'NET', detail:'ghi lỗi HTTP ' + p.status + ' ' + (await gmsg(p))};
 
-    localStorage.removeItem('sl_hub_v1');   // bỏ bản lưu tạm của lần chạy thử
+    lsDel('sl_hub_v1');   // bỏ bản lưu tạm của lần chạy thử
     return {note:'Đã lưu lên GitHub. Chờ khoảng 1 phút rồi tải lại trang chính.'};
   }
 };
@@ -574,7 +610,7 @@ async function doSave(retried){
 
     // Chưa có mã khoá, hoặc mã cũ đã hết hạn: hỏi rồi tự lưu lại
     if((code === 'NEEDTOKEN' || code === 'AUTH') && !retried){
-      if(code === 'AUTH') localStorage.removeItem('sl_tok');
+      if(code === 'AUTH'){ memTok = ''; lsDel('sl_tok'); }
       var got = await askToken();
       if(got) return doSave(true);
       setStatus('Chưa lưu. Cần mã khoá GitHub mới ghi được.', 'warn');
@@ -623,9 +659,16 @@ async function boot(){
   try{ items = await Store.load(); }catch(e){ items = []; }
   render();
   initSort();
-  setStatus(Store.token
-    ? 'Kho lưu: ' + Store.name + ' · đã có mã khoá'
-    : 'Kho lưu: ' + Store.name + ' · chưa có mã khoá, sẽ hỏi khi bấm Lưu');
+  var has = Store.token;          // gọi trước để biết localStorage có bị chặn không
+  if(lsBlocked){
+    setStatus('Trình duyệt này chặn bộ nhớ cục bộ (thường do mở link trong Zalo, ' +
+              'hoặc chế độ riêng tư). Vẫn lưu được, nhưng mã khoá phải dán lại mỗi lần. ' +
+              'Nên mở bằng Safari hoặc Chrome.', 'warn');
+  }else{
+    setStatus(has
+      ? 'Kho lưu: ' + Store.name + ' · đã có mã khoá'
+      : 'Kho lưu: ' + Store.name + ' · chưa có mã khoá, sẽ hỏi khi bấm Lưu');
+  }
 
   $('add').addEventListener('click', function(){ openDialog(-1) });
   $('save').addEventListener('click', doSave);
